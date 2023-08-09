@@ -3,3 +3,10 @@
 
 # Ada Library Information
 *.ali
+/obj/
+/lib/
+/alire/
+/config/
+
+# Scripts
+*.ksh
