@@ -5,33 +5,6 @@ package body SPARK_RFSB509EXP.Salsa20_SHA512
   with SPARK_Mode => On
 is
    --------------------------------------------------------
-   --  Local constant definition(s)
-   --------------------------------------------------------
-
-   --  The RFSB-509 compression function is defined by three numbers:
-   --    w: number of input chunks i.e weight of the sum (positive integer)
-   --    b: length of the input chunks in bits (positive integer)
-   --    r: length of the output in bits (odd prime number)
-   --  Dervied from those parameters is:
-   --    s: length of the input in bits (w * b)
-   --  In order for RFSB-509 to be a "compression" function s > r.
-   RFSB509_W : constant I32 := 112;
-   RFSB509_B : constant I32 := 8;
-   RFSB509_R : constant I32 := 509;
-   RFSB509_S : constant I32 := RFSB509_W * RFSB509_B;
-
-   pragma Assert (RFSB509_S > RFSB509_R);
-
-   --------------------------------------------------------
-   --  Local type definition(s)
-   --------------------------------------------------------
-
-   subtype Matrix_Column is Bytes_64
-     with Dynamic_Predicate =>
-       (Matrix_Column (Matrix_Column'Last) and 2#1110_0000#) = 0;
-   subtype Data_Block    is Bytes_48;
-
-   --------------------------------------------------------
    --  Local subprogram declaration(s)
    --------------------------------------------------------
 
