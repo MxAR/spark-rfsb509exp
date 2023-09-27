@@ -20,11 +20,11 @@ project Spark_Rfsb509Exp is
 
    type Enabled_Kind is ("enabled", "disabled");
    Compile_Checks   : Enabled_Kind :=
-     External ("SPARKExp_COMPILE_CHECKS", "enabled");
+     External ("SPARK_RFSB509Exp_COMPILE_CHECKS", "enabled");
    Runtime_Checks   : Enabled_Kind :=
-     External ("SPARKExp_RUNTIME_CHECKS", "disabled");
+     External ("SPARK_RFSB509Exp_RUNTIME_CHECKS", "disabled");
    Style_Checks     : Enabled_Kind :=
-     External ("SPARKExp_STYLE_CHECKS", "enabled");
+     External ("SPARK_RFSB509Exp_STYLE_CHECKS", "enabled");
    Contracts_Checks : Enabled_Kind :=
      External ("SPARK_RFSB509Exp_CONTRACTS", "disabled");
 
@@ -34,9 +34,9 @@ project Spark_Rfsb509Exp is
    Compile_Checks_Switches := ();
    case Compile_Checks is
       when "enabled" =>
-         Compile_Checks_Switches :=
-           ("-gnatwaC",  -- All warnings except redundant checks
-            "-gnatwe"); -- Warnings as errors
+         Compile_Checks_Switches := (
+           "-gnatwaC",  -- All warnings except redundant checks
+           "-gnatwe");  -- Warnings as errors
       when others => null;
    end case;
 
@@ -86,6 +86,10 @@ project Spark_Rfsb509Exp is
                             "-Og");
    end case;
 
+   package Builder is
+      for Global_Configuration_Pragmas use "src/spark_rfsb509exp.adc";
+   end Builder;
+
    package Compiler is
       for Default_Switches ("Ada") use
         Compile_Checks_Switches &
@@ -104,18 +108,23 @@ project Spark_Rfsb509Exp is
    end Binder;
 
    package Prove is
-      for Proof_Switches ("Ada") use ("--proof=per_path",
-                                      "-j4",
-                                      "--no-global-generation",
-                                      "--no-inlining",
-                                      "--no-loop-unrolling",
-                                      "--level=1",
-                                      "--counterexamples=on",
-                                      "--prover=z3,cvc4,altergo",
-                                      "--timeout=60",
-                                      "--memlimit=0",
-                                      "--steps=200000",
-                                      "--report=statistics");
+      for Proof_Switches ("Ada") use (
+        "-k",
+        "--verbose",
+        "--proof=per_path",
+        "--pedantic",
+        "-j0",
+        "--mode=all",
+        "--no-global-generation",
+        "--no-inlining",
+        "--no-loop-unrolling",
+        "--level=2",
+        "--counterexamples=on",
+        "--prover=all",
+        "--timeout=60",
+        "--memlimit=0",
+        "--steps=200000",
+        "--report=statistics");
    end Prove;
 
    package Install is

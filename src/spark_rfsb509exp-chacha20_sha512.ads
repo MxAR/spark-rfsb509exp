@@ -1,9 +1,7 @@
 with SPARKNaCl.Core;    use SPARKNaCl.Core;
-with SPARKNaCl.Hashing; use SPARKNaCl.Hashing;
 
-package SPARK_RFSB509EXP.Salsa20_SHA512
-  with Pure,
-       SPARK_Mode => On
+package SPARK_RFSB509EXP.ChaCha20_SHA512
+  with Pure
 is
 
    --------------------------------------------------------
@@ -13,7 +11,7 @@ is
 
    procedure Hash (Output :    out Digest;
                    Input  : in     Byte_Seq;
-                   Key    : in     Salsa20_Key)
+                   Key    : in     ChaCha20_Key)
      with Global => null;
 
    --------------------------------------------------------
@@ -21,7 +19,7 @@ is
    --------------------------------------------------------
 
    function Hash (Input : in Byte_Seq;
-                  Key   : in Salsa20_Key) return Digest
+                  Key   : in ChaCha20_Key) return Digest
      with Global => null;
 
-end SPARK_RFSB509EXP.Salsa20_SHA512;
+end SPARK_RFSB509EXP.ChaCha20_SHA512;

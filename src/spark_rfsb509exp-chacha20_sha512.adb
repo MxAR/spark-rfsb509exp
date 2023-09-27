@@ -1,16 +1,18 @@
 with SPARK_RFSB509EXP.Utilities; use SPARK_RFSB509EXP.Utilities;
-with SPARKNaCl.Stream;           use SPARKNaCl.Stream;
 
-package body SPARK_RFSB509EXP.Salsa20_SHA512
-  with SPARK_Mode => On
+with SPARKNaCl.Stream;         use SPARKNaCl.Stream;
+with SPARKNaCl.Hashing.SHA512; use SPARKNaCl.Hashing.SHA512;
+
+package body SPARK_RFSB509EXP.ChaCha20_SHA512
 is
-   --------------------------------------------------------
+
+   ----------------------------------------------------------------------------
    --  Local subprogram declaration(s)
-   --------------------------------------------------------
+   ----------------------------------------------------------------------------
 
    procedure Calculate_Column (Column :    out Bytes_64;
                                Word   : in     Byte;
-                               Key    : in     Salsa20_Key)
+                               Key    : in     ChaCha20_Key)
      with Global => null,
           Post   => ((Column (Column'Last) and 2#1110_00_00#) = 0);
 
@@ -23,36 +25,41 @@ is
 
    procedure Compress (Chain_Value : in out Matrix_Column;
                        Block       : in     Data_Block;
-                       Key         : in     Salsa20_Key)
+                       Key         : in     ChaCha20_Key)
      with Global => null;
 
    procedure Hash_Blocks (Output          : in out Matrix_Column;
                           Bytes_Remaining :    out Index_48;
                           Input           : in     Byte_Seq;
-                          Key             : in     Salsa20_Key)
+                          Key             : in     ChaCha20_Key)
      with Global => null,
           Post   => I64 (Bytes_Remaining) <= Input'Length;
 
    procedure Hash_Local (Output :    out Digest;
                          Input  : in     Byte_Seq;
-                         Key    : in     Salsa20_Key)
+                         Key    : in     ChaCha20_Key)
      with Global => null;
 
-   --------------------------------------------------------
+   ----------------------------------------------------------------------------
    --  Local subprogram bodies
-   --------------------------------------------------------
+   ----------------------------------------------------------------------------
 
    procedure Calculate_Column (Column :    out Bytes_64;
                                Word   : in     Byte;
-                               Key    : in     Salsa20_Key)
+                               Key    : in     ChaCha20_Key)
    is
-      Nonce : constant Salsa20_Nonce :=
-        (Salsa20_Nonce'Last => Word, others => 0);
+      Nonce : constant ChaCha20_Nonce :=
+        (ChaCha20_Nonce'Last => Word, others => 0);
 
       Five_LSB_Mask         : constant Byte := 2#0001_1111#;
       First_Byte, Last_Byte : Byte;
    begin
-      Salsa20 (SPARKNaCl.Byte_Seq (Column), Nonce, Key);
+      declare
+         SPARKNaCl_Output : SPARKNaCl.Bytes_64;
+      begin
+         ChaCha20 (SPARKNaCl_Output, Nonce, Key, 0);
+         Convert_From_SPARKNaCl_Bytes (Column, SPARKNaCl_Output);
+      end;
 
       First_Byte := Column (Column'First);
       Last_Byte  := Column (Column'Last);
@@ -132,7 +139,7 @@ is
 
    procedure Compress (Chain_Value : in out Matrix_Column;
                        Block       : in     Data_Block;
-                       Key         : in     Salsa20_Key)
+                       Key         : in     ChaCha20_Key)
    is
       Sum    : Matrix_Column;
       Column : Matrix_Column;
@@ -157,22 +164,21 @@ is
    procedure Hash_Blocks (Output          : in out Matrix_Column;
                           Bytes_Remaining :    out Index_48;
                           Input           : in     Byte_Seq;
-                          Key             : in     Salsa20_Key)
+                          Key             : in     ChaCha20_Key)
    is
-      Remainder    : I64 := Input'Length;
-      Current_Byte : I32 := Input'First;
+      Remainder    : U32 := Input'Length;
+      Current_Byte : U32 := Input'First;
 
       Block : Data_Block;
    begin
-      pragma Assert (Block'Length = (RFSB509_S - RFSB509_R) / RFSB509_B);
-
       while Remainder >= Block'Length loop
-         pragma Loop_Variant
-           (Increases => Current_Byte, Decreases => Remainder);
-         pragma Loop_Invariant
-           ((Remainder + I64 (Current_Byte) = I64 (Input'Last) + 1) and
-             (Remainder in Block'Length .. Input'Length) and
-             (Current_Byte in Input'First .. (Input'Last - Block'Length + 1)));
+         pragma Loop_Variant (
+           Increases => Current_Byte,
+           Decreases => Remainder);
+         pragma Loop_Invariant (
+           (U64 (Remainder) + U64 (Current_Byte) = U64 (Input'Last) + 1)
+           and then (Remainder in Block'Length .. Input'Length) and then
+           (Current_Byte in Input'First .. ((Input'Last - Block'Length) + 1)));
 
          Block := Input (Current_Byte .. Current_Byte + (Block'Length - 1));
          Compress (Output, Block, Key);
@@ -189,21 +195,19 @@ is
 
    procedure Hash_Local (Output :    out Digest;
                          Input  : in     Byte_Seq;
-                         Key    : in     Salsa20_Key)
+                         Key    : in     ChaCha20_Key)
    is
       Hash  : Matrix_Column := (others => 0);
       Block : Data_Block with Relaxed_Initialization;
 
       Bytes_Remaining, Block_Index : Index_48;
    begin
-      pragma Assert (Block'Length = (RFSB509_S - RFSB509_R) / RFSB509_B);
-
       Hash_Blocks (Hash, Bytes_Remaining, Input, Key);
       Block_Index := Block'First + Bytes_Remaining;
 
       if Bytes_Remaining > 0 then
          Block (Block'First .. Block_Index - 1) :=
-           Input (Input'Last - I32 (Bytes_Remaining) + 1 .. Input'Last);
+           Input ((Input'Last - Bytes_Remaining) + 1 .. Input'Last);
 
          if Block_Index > (Block'Last - 7) then
             Block (Block_Index .. Block'Last) := (others => 0);
@@ -218,23 +222,30 @@ is
         Block (Block'Last - 7 .. Block'Last), U64 (Input'Length));
 
       Compress (Hash, Block, Key);
-      SPARKNaCl.Hashing.Hash (Output, SPARKNaCl.Byte_Seq (Hash));
+
+      declare
+         SPARKNaCl_Output : SPARKNaCl.Bytes_64;
+      begin
+         SPARKNaCl.Hashing.SHA512.Hash (SPARKNaCl_Output,
+                                        Convert_To_SPARKNaCl_Bytes (Hash));
+         Convert_From_SPARKNaCl_Bytes (Output, SPARKNaCl_Output);
+      end;
    end Hash_Local;
 
-   --------------------------------------------------------
+   ----------------------------------------------------------------------------
    --  Global subprogram bodies
-   --------------------------------------------------------
+   ----------------------------------------------------------------------------
 
    procedure Hash (Output :    out Digest;
                    Input  : in     Byte_Seq;
-                   Key    : in     Salsa20_Key)
+                   Key    : in     ChaCha20_Key)
    is
    begin
       Hash_Local (Output, Input, Key);
    end Hash;
 
    function Hash (Input : in Byte_Seq;
-                  Key   : in Salsa20_Key) return Digest
+                  Key   : in ChaCha20_Key) return Digest
    is
       Output : Digest;
    begin
@@ -242,4 +253,4 @@ is
       return Output;
    end Hash;
 
-end SPARK_RFSB509EXP.Salsa20_SHA512;
+end SPARK_RFSB509EXP.ChaCha20_SHA512;

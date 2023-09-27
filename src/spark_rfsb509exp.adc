@@ -1,4 +1,4 @@
--- Partition-wide restrictions
+--  Partition-wide restrictions
 pragma Restriction_Warnings (No_Allocators);
 pragma Restriction_Warnings (No_Anonymous_Allocators);
 pragma Restriction_Warnings (No_Delay);
@@ -13,3 +13,9 @@ pragma Restriction_Warnings (No_Implicit_Protected_Object_Allocations);
 pragma Restriction_Warnings (No_Implicit_Task_Allocations);
 pragma Restriction_Warnings (No_Recursion);
 pragma Restriction_Warnings (No_Relative_Delay);
+
+--  SPARK configuration
+pragma SPARK_Mode (On);
+pragma Profile (Ravenscar);
+pragma Partition_Elaboration_Policy (Sequential);
+pragma Detect_Blocking;

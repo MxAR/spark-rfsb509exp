@@ -12,7 +12,7 @@ maintainers-logins = ["mxar"]
 
 [[depends-on]]
 gnat_external = ">=13.2.1"
-sparknacl = "^3.0.0"
+sparknacl = "^4.0.0"
 
 [gpr-externals]
 SPARKNACL_LIBRARY_TYPE = ["relocatable", "static", "static-pic"]
